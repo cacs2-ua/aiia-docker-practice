@@ -1,3 +1,8 @@
+----- PROJECT STRUCTURE -----
+ 
+  
+   
+    
 docker-ml-app/
   api/                  # inference service
     app/                # Python package or src

@@ -1,0 +1,4 @@
+gradio==4.29.0
+pydantic<2.11
+requests==2.32.*
+pillow==10.*
