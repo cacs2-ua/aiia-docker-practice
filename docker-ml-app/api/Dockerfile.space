@@ -1,0 +1,39 @@
+# api/Dockerfile.space  (CPU Space)
+FROM python:3.11-slim
+
+ARG DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      libjpeg62-turbo libpng16-16 ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+ENV APP_HOME=/app
+RUN useradd -m -u 10001 appuser
+WORKDIR $APP_HOME
+
+# Install small deps first (cacheable) + torch/torchvision from CPU index
+COPY requirements.txt ./requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --upgrade pip && \
+    pip install --prefer-binary --index-url https://download.pytorch.org/whl/cpu \
+        torch==2.3.1 torchvision==0.18.1 && \
+    pip install -r requirements.txt
+
+# Preload weights into a stable, user-owned cache to avoid first-request download
+ENV TORCH_HOME=/opt/torch-cache
+RUN mkdir -p ${TORCH_HOME} && chown -R appuser:appuser ${TORCH_HOME}
+USER appuser
+RUN python - <<'PY'
+import torchvision as tv
+_ = tv.models.resnet18(weights=tv.models.ResNet18_Weights.DEFAULT).eval()
+PY
+
+# Copy app last for fast code-only rebuilds
+COPY --chown=appuser:appuser app ./app
+
+# Use the port provided by HF ($PORT). Default to 8000 if running elsewhere.
+ENV HOST=0.0.0.0
+ENV PORT=${PORT:-8000}
+EXPOSE 8000
+
+# NOTE: Spaces sets $PORT at runtime; we bind to it here.
+CMD bash -lc "gunicorn -k uvicorn.workers.UvicornWorker -w 1 -b 0.0.0.0:${PORT:-8000} app.main:app"
