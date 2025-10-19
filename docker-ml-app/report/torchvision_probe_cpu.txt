@@ -1,0 +1,1 @@
+0.18.1+cpu <function resnet18 at 0x7d2582b040e0>
