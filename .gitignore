@@ -1,0 +1,139 @@
+# -------------------------
+# OS / editor cruft
+# -------------------------
+.DS_Store
+Thumbs.db
+$RECYCLE.BIN/
+*.swp
+*.swo
+
+# -------------------------
+# Python
+# -------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.so
+*.dylib
+*.egg-info/
+.eggs/
+*.egg
+.Python
+.python-version
+.venv/
+venv/
+ENV/
+env/
+pip-wheel-metadata/
+pip-log.txt
+.tox/
+.nox/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.cache/
+mypy_cache/
+.dmypy.json
+.pyre/
+.pytype/
+.ipynb_checkpoints/
+*.ipynb
+
+# -------------------------
+# Logs
+# -------------------------
+logs/
+*.log
+
+# -------------------------
+# Build / artifacts
+# -------------------------
+build/
+dist/
+site/
+*.sqlite3
+
+# -------------------------
+# IDE / Editor settings
+# -------------------------
+.vscode/
+.idea/
+*.code-workspace
+
+# -------------------------
+# Docker / Compose
+# -------------------------
+.env
+.env.*
+docker-compose.override.yml
+# local data/volumes if you create them
+data/
+volumes/
+tmp/
+tmp/**
+
+# -------------------------
+# Assets (keep small samples, ignore heavy binaries)
+# -------------------------
+assets/**/*.tmp
+assets/**/*.cache
+assets/**/*.log
+assets/**/*.mp4
+assets/**/*.wav
+assets/**/*.mp3
+assets/**/*.zip
+# Keep the tiny demo images for Phase 2
+!assets/dog.jpg
+!assets/cat.jpg
+
+# -------------------------
+# Model artifacts / caches
+# -------------------------
+*.pt
+*.pth
+*.onnx
+*.ckpt
+*.safetensors
+.cache/huggingface/
+huggingface/
+hf_cache/
+# Gradio runtime cache
+gradio_cached_examples/
+gradio_tmp/
+.gradio/
+
+# -------------------------
+# Reports / docs outputs
+# -------------------------
+report/*.pdf
+report/*.docx
+report/*.pptx
+# LaTeX byproducts (if used)
+report/*.aux
+report/*.log
+report/*.out
+report/*.toc
+
+# -------------------------
+# Frontend (if any) / misc
+# -------------------------
+node_modules/
+*.map
+
+# -------------------------
+# Secrets / keys
+# -------------------------
+secrets/
+*.key
+*.pem
+*.crt
+*.env.local
+
+# -------------------------
+# Misc backups
+# -------------------------
+*.bak
+*.tmp
+*.orig
+*.rej
