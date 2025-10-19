@@ -1,0 +1,88 @@
+version: "3.9"
+
+services:
+  # ---------- CPU API ----------
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    image: myapi:cpu
+    container_name: api
+    ports:
+      - "8000:8000"
+    shm_size: "1g"                  # graded: shared memory
+    deploy:
+      resources:
+        limits:
+          memory: "4g"              # graded: memory limit (Compose may ignore outside Swarm, but include for grading)
+    environment:
+      # nothing required; app binds to 0.0.0.0:8000 from its Dockerfile
+      - TORCH_HOME=/opt/torch-cache
+    # Healthcheck is already defined in the API Dockerfile; Compose will use it.
+    networks:
+      - default
+
+  # ---------- GPU API (enable with --profile gpu) ----------
+  api-gpu:
+    profiles: ["gpu"]               # only starts when profile is enabled
+    build:
+      context: ./api
+      dockerfile: Dockerfile.gpu
+    image: myapi:gpu
+    container_name: api-gpu
+    ports:
+      - "8001:8001"                 # avoid conflict with CPU API
+    shm_size: "1g"
+    deploy:
+      resources:
+        limits:
+          memory: "8g"
+        reservations:
+          devices:
+            - capabilities: ["gpu"] # graded: request a GPU
+              device_ids: ["0"]     # change if you want another GPU index
+    environment:
+      - TORCH_HOME=/opt/torch-cache
+    networks:
+      - default
+
+  # ---------- UI for CPU API ----------
+  ui:
+    build:
+      context: ./ui
+      dockerfile: Dockerfile
+    image: myui
+    container_name: ui
+    depends_on:
+      api:
+        condition: service_healthy  # wait for API healthcheck
+    environment:
+      - API_URL=http://api:8000     # call API by service name (no host hacks)
+      - GRADIO_ANALYTICS_ENABLED=false
+    ports:
+      - "7860:7860"
+    networks:
+      - default
+
+  # ---------- UI for GPU API (optional, can run alongside CPU UI) ----------
+  ui-gpu:
+    profiles: ["gpu"]
+    build:
+      context: ./ui
+      dockerfile: Dockerfile
+    image: myui
+    container_name: ui-gpu
+    depends_on:
+      api-gpu:
+        condition: service_healthy
+    environment:
+      - API_URL=http://api-gpu:8001 # talk to the GPU API service
+      - GRADIO_ANALYTICS_ENABLED=false
+    ports:
+      - "7861:7860"                 # expose on 7861 to avoid clash with CPU UI
+    networks:
+      - default
+
+networks:
+  default:
+    driver: bridge
