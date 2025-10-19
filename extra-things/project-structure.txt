@@ -1,0 +1,13 @@
+docker-ml-app/
+  api/                  # inference service
+    app/                # Python package or src
+    requirements.txt
+    Dockerfile
+  ui/                   # GUI service (Gradio)
+    app/
+    requirements.txt
+    Dockerfile
+  docker-compose.yml
+  .dockerignore
+  README.md
+  report/               # your ≤6-page PDF (final export lives here)

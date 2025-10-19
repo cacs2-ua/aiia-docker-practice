@@ -1,0 +1,179 @@
+---- ALL CODE ----
+ 
+  
+   
+api/app/main.py
+ 
+  # docker-ml-app/api/app/main.py
+import io
+from typing import List
+
+import torch
+import torchvision as tv
+from fastapi import FastAPI, File, UploadFile, Query, HTTPException
+from PIL import Image
+
+app = FastAPI(title="ResNet18 Inference API", version="1.0")
+
+# ---- Load model & transforms once (on startup) ----
+weights = tv.models.ResNet18_Weights.DEFAULT
+model = tv.models.resnet18(weights=weights).eval()
+preprocess = weights.transforms()
+classes: List[str] = list(weights.meta["categories"])
+
+# If GPU is available inside the container (optional), use it.
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model.to(device)
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok", "device": str(device)}
+
+
+@app.post("/infer")
+async def infer(
+    file: UploadFile = File(..., description="RGB image file (jpg/png)"),
+    topk: int = Query(5, ge=1, le=100, description="Top-K predictions"),
+):
+    try:
+        data = await file.read()
+        img = Image.open(io.BytesIO(data)).convert("RGB")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid image: {e}")
+
+    batch = preprocess(img).unsqueeze(0).to(device)
+    with torch.no_grad():
+        logits = model(batch)
+        probs = torch.softmax(logits, dim=1)[0]
+        top = torch.topk(probs, k=min(topk, probs.shape[0]))
+
+    results = [
+        {"label": classes[idx], "prob": float(prob)}
+        for prob, idx in zip(top.values.cpu().tolist(), top.indices.cpu().tolist())
+    ]
+    return {"topk": results}
+
+   
+
+api/Dockerfile
+ 
+  
+   
+    FROM python:3.11-slim
+
+ARG DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      libjpeg62-turbo libpng16-16 ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+ENV APP_HOME=/app
+RUN useradd -m -u 10001 appuser
+WORKDIR $APP_HOME
+
+# Install small deps first (cacheable) + install torch/torchvision from CPU index
+COPY requirements.txt ./requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --upgrade pip && \
+    pip install --prefer-binary --index-url https://download.pytorch.org/whl/cpu \
+        torch==2.3.1 torchvision==0.18.1 && \
+    pip install -r requirements.txt
+
+# Preload weights into appuser-owned cache to avoid first-request download
+ENV TORCH_HOME=/opt/torch-cache
+RUN mkdir -p ${TORCH_HOME} && chown -R appuser:appuser ${TORCH_HOME}
+USER appuser
+RUN python - <<'PY'
+import torchvision as tv
+_ = tv.models.resnet18(weights=tv.models.ResNet18_Weights.DEFAULT).eval()
+PY
+
+# Copy app last for fast code-only rebuilds
+COPY --chown=appuser:appuser app ./app
+
+EXPOSE 8000
+ENV HOST=0.0.0.0 PORT=8000
+HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
+  CMD python -c "import socket,os; s=socket.socket(); s.settimeout(2); s.connect((os.getenv('HOST','0.0.0.0'), int(os.getenv('PORT','8000')))); s.close()"
+CMD ["bash","-lc","gunicorn -k uvicorn.workers.UvicornWorker -w 1 -b 0.0.0.0:8000 app.main:app"]
+
+     
+
+      
+api/Dockerfile.gpu
+ 
+# docker-ml-app/api/Dockerfile.gpu
+FROM pytorch/pytorch:2.3.1-cuda11.8-cudnn8-runtime
+
+ARG DEBIAN_FRONTEND=noninteractive
+# Jammy (22.04): use libjpeg-turbo8, not libjpeg62-turbo
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      libjpeg-turbo8 \
+      libpng16-16 \
+      ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+ENV APP_HOME=/app
+RUN useradd -m -u 10001 appuser
+WORKDIR $APP_HOME
+
+# Only small deps; torch/torchvision come from the base image
+COPY requirements.txt ./requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --upgrade pip && \
+    pip install -r requirements.txt
+
+# Preload torchvision weights as runtime user into a stable, user-owned cache
+ENV TORCH_HOME=/opt/torch-cache
+RUN mkdir -p ${TORCH_HOME} && chown -R appuser:appuser ${TORCH_HOME}
+USER appuser
+RUN python - <<'PY'
+import torchvision as tv
+_ = tv.models.resnet18(weights=tv.models.ResNet18_Weights.DEFAULT).eval()
+PY
+
+# Copy app last for fast code-only rebuilds
+COPY --chown=appuser:appuser app ./app
+
+# GPU container listens on 8001 (to avoid conflict with CPU container on 8000)
+EXPOSE 8001
+ENV HOST=0.0.0.0 PORT=8001
+HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
+  CMD python -c "import socket,os; s=socket.socket(); s.settimeout(2); s.connect((os.getenv('HOST','0.0.0.0'), int(os.getenv('PORT','8001')))); s.close()"
+
+# Bind Gunicorn to 0.0.0.0:8001
+CMD ["bash","-lc","gunicorn -k uvicorn.workers.UvicornWorker -w 1 -b 0.0.0.0:8001 app.main:app"]
+  
+   
+    
+
+     
+      
+       
+        
+
+ 
+  
+   
+    
+
+     
+      
+       
+api/requirements.txt
+ 
+  
+ pillow==10.*
+fastapi==0.115.*
+uvicorn[standard]==0.30.*
+gunicorn==22.0.*
+python-multipart==0.0.9  
+    
+     
+
+
+ 
+  
+
+   
+    
