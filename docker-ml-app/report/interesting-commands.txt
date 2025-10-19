@@ -1,0 +1,22 @@
+# Clean start
+docker compose down -v --remove-orphans
+rm -rf report && mkdir -p report
+
+# Bring CPU and GPU stacks (if GPU available)
+docker compose up --build -d
+docker compose --profile gpu up --build -d
+
+# Collect evidence
+# CPU
+curl -s http://localhost:8000/health | tee report/health_cpu.json
+curl -s -X POST "http://localhost:8000/infer?topk=5" -H "Content-Type: multipart/form-data" -F "file=@assets/dog.jpg" | tee report/infer_cpu_dog.json
+# GPU
+curl -s http://localhost:8001/health | tee report/health_gpu.json
+curl -s -X POST "http://localhost:8001/infer?topk=5" -H "Content-Type: multipart/form-data" -F "file=@assets/dog.jpg" | tee report/infer_gpu_dog.json
+
+# Dockerfile quality
+docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}" | tee report/images_sizes.txt
+docker history --no-trunc myapi:cpu   | tee report/history_api_cpu.txt
+docker history --no-trunc myui:latest | tee report/history_ui.txt
+docker history --no-trunc myapi:gpu   | tee report/history_api_gpu.txt
+docker compose config | tee report/docker_compose_resolved.yml

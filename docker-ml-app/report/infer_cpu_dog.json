@@ -1,0 +1,27 @@
+bledyx@DESKTOP-FJHO4P3:~/UA/master-ia/AIIA/docker-practice/docker-ml-app/api$ curl -s -X POST "http://localhost:8001/infer?topk=5" \
+  -H "Content-Type: multipart/form-data" \
+  -F "file=@../../assets/dog.jpg" | jq
+{
+  "topk": [
+    {
+      "label": "golden retriever",
+      "prob": 0.7203643918037415
+    },
+    {
+      "label": "Brittany spaniel",
+      "prob": 0.08956384658813477
+    },
+    {
+      "label": "otterhound",
+      "prob": 0.048886630684137344
+    },
+    {
+      "label": "clumber",
+      "prob": 0.028745491057634354
+    },
+    {
+      "label": "Labrador retriever",
+      "prob": 0.026693562045693398
+    }
+  ]
+}
