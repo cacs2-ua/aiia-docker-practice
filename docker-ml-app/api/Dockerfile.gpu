@@ -1,0 +1,41 @@
+# docker-ml-app/api/Dockerfile.gpu
+FROM pytorch/pytorch:2.3.1-cuda11.8-cudnn8-runtime
+
+ARG DEBIAN_FRONTEND=noninteractive
+# Jammy (22.04): use libjpeg-turbo8, not libjpeg62-turbo
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      libjpeg-turbo8 \
+      libpng16-16 \
+      ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+ENV APP_HOME=/app
+RUN useradd -m -u 10001 appuser
+WORKDIR $APP_HOME
+
+# Only small deps; torch/torchvision come from the base image
+COPY requirements.txt ./requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --upgrade pip && \
+    pip install -r requirements.txt
+
+# Preload torchvision weights as runtime user into a stable, user-owned cache
+ENV TORCH_HOME=/opt/torch-cache
+RUN mkdir -p ${TORCH_HOME} && chown -R appuser:appuser ${TORCH_HOME}
+USER appuser
+RUN python - <<'PY'
+import torchvision as tv
+_ = tv.models.resnet18(weights=tv.models.ResNet18_Weights.DEFAULT).eval()
+PY
+
+# Copy app last for fast code-only rebuilds
+COPY --chown=appuser:appuser app ./app
+
+# GPU container listens on 8001 (to avoid conflict with CPU container on 8000)
+EXPOSE 8001
+ENV HOST=0.0.0.0 PORT=8001
+HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
+  CMD python -c "import socket,os; s=socket.socket(); s.settimeout(2); s.connect((os.getenv('HOST','0.0.0.0'), int(os.getenv('PORT','8001')))); s.close()"
+
+# Bind Gunicorn to 0.0.0.0:8001
+CMD ["bash","-lc","gunicorn -k uvicorn.workers.UvicornWorker -w 1 -b 0.0.0.0:8001 app.main:app"]
