@@ -1,0 +1,81 @@
+# ---- VCS / Repo metadata ----
+.git
+.gitignore
+.gitattributes
+
+# ---- Python bytecode / build artefacts ----
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+*.egg
+.eggs/
+build/
+dist/
+pip-wheel-metadata/
+.cache/
+.mypy_cache/
+.pytest_cache/
+.tox/
+.coverage*
+htmlcov/
+
+# ---- Virtual environments / env files ----
+.venv/
+venv/
+env/
+*.env
+.env
+.env.*
+
+# ---- Jupyter ----
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# ---- OS / Editor junk ----
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# ---- Logs / temp ----
+logs/
+*.log
+tmp/
+temp/
+tmp.*/
+*.tmp
+
+# ---- Data / artefacts (not needed in images) ----
+data/
+dataset/
+datasets/
+checkpoints/
+runs/
+outputs/
+reports/
+report/
+
+# ---- Model caches / large weights (we install weights in Dockerfile layer) ----
+.huggingface/
+hf_cache/
+transformers_cache/
+torch_cache/
+opt/torch-cache/
+*.pt
+*.pth
+*.ckpt
+
+# ---- Local test assets ----
+assets/
+
+# ---- Node (in case) ----
+node_modules/
+
+# ---- Misc ----
+*.bak
+*.orig

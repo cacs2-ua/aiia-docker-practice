@@ -1,0 +1,6 @@
+REPOSITORY                           TAG                       SIZE
+myui                                 latest                    769MB
+myapi                                gpu                       12.5GB
+myapi                                cpu                       1.6GB
+myapi                                latest                    8.64GB
+nvidia/cuda                          12.4.0-base-ubuntu22.04   348MB
